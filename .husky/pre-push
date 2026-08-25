@@ -1,0 +1,22 @@
+#!/usr/bin/env sh
+
+# Husky runs with a minimal PATH — load nvm when available
+export NVM_DIR="$HOME/.nvm"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+  # shellcheck disable=SC1091
+  . "$NVM_DIR/nvm.sh"
+  nvm use node >/dev/null 2>&1 || true
+fi
+
+export PATH="$(pwd)/node_modules/.bin:$PATH"
+
+# Lint runs on staged files in pre-commit — pre-push focuses on typecheck.
+# (No unit-test suite / production build gate yet for Expo.)
+echo "🚀 Running pre-push checks (typecheck)..."
+
+pnpm typecheck || {
+  echo "❌ Typecheck failed. Run 'pnpm typecheck' to see errors."
+  exit 1
+}
+
+echo "✅ All pre-push checks passed"
