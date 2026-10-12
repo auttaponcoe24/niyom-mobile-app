@@ -84,6 +84,8 @@ export type UnitRow = {
   firstName: string | null;
   lastName: string | null;
   houseNumber: string | null;
+  /** Last round's reading and the units billed from it. */
+  beforeData?: { unitNumber: number | null; unitUsed: number | null } | null;
 };
 
 export type Customer = {

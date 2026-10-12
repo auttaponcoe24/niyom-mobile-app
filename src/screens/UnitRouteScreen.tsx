@@ -3,7 +3,6 @@ import { FlashList } from '@shopify/flash-list';
 import { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { ProgressBar, SegmentedButtons, Text } from 'react-native-paper';
-
 import { UnitListRow } from '@/components/list-rows';
 import { Screen } from '@/components/Screen';
 import { ContextChip, EmptyState, SearchField } from '@/components/ui';
@@ -12,6 +11,7 @@ import { useGetUnits } from '@/hooks';
 import type { UnitsStackParamList } from '@/navigation/types';
 import { colors } from '@/theme/colors';
 import type { UnitRow } from '@/types/api';
+import { formatThaiMonth } from '@/utils/thai-date';
 
 type Props = NativeStackScreenProps<UnitsStackParamList, 'UnitRoute'>;
 type Filter = 'all' | 'pending' | 'done';
@@ -116,13 +116,13 @@ export function UnitRouteScreen({ navigation }: Props) {
   return (
     <Screen title="จดมิเตอร์" subtitle="แตะรายการเพื่อจดเลขมิเตอร์" scroll={false}>
       <ContextChip
-        label={`${zone.zoneName} · ${unitType === 'W' ? 'น้ำ' : 'ไฟ'}`}
+        label={`${zone.zoneName} · ${unitType === 'W' ? 'น้ำ' : 'ไฟ'} · ${formatThaiMonth(month)}`}
       />
 
       <View style={styles.progressCard}>
         <View style={styles.progressHead}>
           <Text variant="titleSmall" style={styles.progressTitle}>
-            ความคืบหน้าวันนี้
+            ความคืบหน้ารอบนี้
           </Text>
           <Text variant="labelLarge" style={styles.progressCount}>
             {stats.done}/{stats.total}

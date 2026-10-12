@@ -41,10 +41,20 @@ export function PayDetailScreen({ route, navigation }: Props) {
     });
   }, [navigation]);
 
-  const onPay = async () => {
-    const amount = Number(pay);
-    if (Number.isNaN(amount) || amount < 0) {
-      Alert.alert('ยอดไม่ถูกต้อง', 'กรุณากรอกจำนวนเงิน');
+  const due = transaction.total ?? 0;
+  const amount = Number(pay);
+  // The API marks the bill paid with whatever amount it is sent, so a short or
+  // over payment is called out before it is confirmed.
+  const diffNote =
+    Number.isNaN(amount) || amount <= 0 || amount === due
+      ? null
+      : amount < due
+        ? `น้อยกว่ายอดบิล ${formatMoney(due - amount)} บาท — ส่วนที่เหลือจะยกไปรวมในบิลเดือนถัดไป`
+        : `มากกว่ายอดบิล ${formatMoney(amount - due)} บาท — ตรวจยอดอีกครั้ง`;
+
+  const onPay = () => {
+    if (Number.isNaN(amount) || amount <= 0) {
+      Alert.alert('ยอดไม่ถูกต้อง', 'กรุณากรอกจำนวนเงินที่มากกว่า 0');
       return;
     }
     if (!transaction.id || transaction.id <= 0) {
@@ -54,7 +64,21 @@ export function PayDetailScreen({ route, navigation }: Props) {
       );
       return;
     }
+    const lines = [
+      customerName,
+      `บ้านเลขที่ ${transaction.houseNumber || '-'} · ${
+        transaction.type === 'W' ? 'ค่าน้ำ' : 'ค่าไฟ'
+      }`,
+      `รับเงิน ${formatMoney(amount)} บาท`,
+    ];
+    if (diffNote) lines.push('', diffNote);
+    Alert.alert('ยืนยันรับชำระ?', lines.join('\n'), [
+      { text: 'ยกเลิก', style: 'cancel' },
+      { text: 'ยืนยัน', onPress: () => void submit() },
+    ]);
+  };
 
+  const submit = async () => {
     try {
       await payMutation.mutateAsync({
         transactionId: transaction.id,
@@ -162,8 +186,16 @@ export function PayDetailScreen({ route, navigation }: Props) {
               underlineColor="transparent"
               activeUnderlineColor="transparent"
             />
-            <Text variant="bodySmall" style={styles.payHint}>
-              {paid ? 'รายการนี้ชำระครบแล้ว' : 'กรอกยอดที่รับจริงจากลูกค้า'}
+            <Text
+              variant="bodySmall"
+              style={[
+                styles.payHint,
+                !paid && diffNote ? styles.payHintWarn : null,
+              ]}
+            >
+              {paid
+                ? 'รายการนี้ชำระครบแล้ว'
+                : (diffNote ?? 'กรอกยอดที่รับจริงจากลูกค้า')}
             </Text>
           </View>
         </ScrollView>
@@ -353,6 +385,10 @@ const styles = StyleSheet.create({
   payHint: {
     color: colors.textMuted,
     textAlign: 'center',
+  },
+  payHintWarn: {
+    color: colors.warning,
+    fontWeight: '600',
   },
   footer: {
     paddingTop: 8,

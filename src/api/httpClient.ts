@@ -20,11 +20,26 @@ export const httpClient = axios.create({
 
 type RetryConfig = InternalAxiosRequestConfig & { _retry?: boolean };
 
-let refreshPromise: Promise<string | null> | null = null;
+/** `expired`: the server rejected the refresh token. `failed`: could not reach it. */
+type RefreshResult = { token: string } | 'expired' | 'failed';
 
-async function refreshAccessToken(): Promise<string | null> {
+let refreshPromise: Promise<RefreshResult> | null = null;
+let onSessionExpired: (() => void) | null = null;
+
+/** AuthContext registers here so an expired session sends the user back to login. */
+export function setSessionExpiredHandler(handler: (() => void) | null) {
+  onSessionExpired = handler;
+}
+
+/** True when the API answered and refused the credentials (not a network failure). */
+export function isAuthRejection(error: unknown) {
+  const status = (error as AxiosError)?.response?.status;
+  return status === 401 || status === 403;
+}
+
+async function refreshAccessToken(): Promise<RefreshResult> {
   const refreshToken = await getRefreshToken();
-  if (!refreshToken) return null;
+  if (!refreshToken) return 'expired';
 
   try {
     const { data } = await axios.post<ApiEnvelope<MobileAuthData>>(
@@ -34,10 +49,12 @@ async function refreshAccessToken(): Promise<string | null> {
     );
     const tokens = data.data.tokens;
     await setTokens(tokens.accessToken, tokens.refreshToken);
-    return tokens.accessToken;
-  } catch {
+    return { token: tokens.accessToken };
+  } catch (error) {
+    // Field phones drop signal often: only a real rejection ends the session.
+    if (!isAuthRejection(error)) return 'failed';
     await clearTokens();
-    return null;
+    return 'expired';
   }
 }
 
@@ -69,16 +86,22 @@ httpClient.interceptors.response.use(
     }
 
     original._retry = true;
-    refreshPromise ??= refreshAccessToken().finally(() => {
-      refreshPromise = null;
-    });
+    // One refresh (and one expiry notice) no matter how many requests got a 401.
+    refreshPromise ??= refreshAccessToken()
+      .then((outcome) => {
+        if (outcome === 'expired') onSessionExpired?.();
+        return outcome;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
 
-    const nextToken = await refreshPromise;
-    if (!nextToken) {
+    const result = await refreshPromise;
+    if (typeof result === 'string') {
       return Promise.reject(error);
     }
 
-    original.headers.Authorization = `Bearer ${nextToken}`;
+    original.headers.Authorization = `Bearer ${result.token}`;
     return httpClient(original);
   }
 );

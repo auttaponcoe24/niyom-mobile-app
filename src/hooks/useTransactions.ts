@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { mobileGetTransactions, mobilePayTransaction } from '@/api/mobile';
+import { fetchAllPages } from '@/api/pagination';
 import {
   type TransactionListParams,
   transactionKeys,
@@ -10,12 +11,14 @@ export function useGetTransactions(
   params: TransactionListParams,
   options?: { enabled?: boolean }
 ) {
-  const queryParams = { page: 1, limit: 100, ...params };
+  // Whole zone, not one page: `limit` is only the page size per request.
+  const queryParams = { limit: 100, ...params };
   const enabled = options?.enabled ?? Boolean(params.zoneId && params.date);
 
   return useQuery({
     queryKey: transactionKeys.list(queryParams),
-    queryFn: () => mobileGetTransactions(queryParams),
+    queryFn: () =>
+      fetchAllPages((page) => mobileGetTransactions({ ...queryParams, page })),
     enabled,
   });
 }

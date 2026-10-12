@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import dayjs from 'dayjs';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { SegmentedButtons, Text } from 'react-native-paper';
 
@@ -14,6 +14,7 @@ import { useWork } from '@/context/WorkContext';
 import { useGetZones } from '@/hooks';
 import { colors } from '@/theme/colors';
 import type { UnitType, Zone } from '@/types/api';
+import { formatThaiMonth, isCurrentMonth } from '@/utils/thai-date';
 
 function zoneKeyExtractor(item: Zone) {
   return String(item.id);
@@ -35,6 +36,11 @@ export function HomeScreen() {
     for (const item of zones) map.set(item.id, item);
     return map;
   }, [zones]);
+
+  // A remembered zone that no longer exists (deleted on the web) is dropped.
+  useEffect(() => {
+    if (zone && zonesQuery.isSuccess && !zonesById.has(zone.id)) setZone(null);
+  }, [zone, zonesById, zonesQuery.isSuccess, setZone]);
 
   const shiftMonth = useCallback(
     (delta: number) => {
@@ -91,7 +97,7 @@ export function HomeScreen() {
             <Ionicons name="checkmark-circle" size={16} color="#E8F8F0" />
             <Text style={styles.activePillText}>
               {zone.zoneName} · {unitType === 'W' ? 'น้ำ' : 'ไฟ'} ·{' '}
-              {dayjs(month).format('MM/YYYY')}
+              {formatThaiMonth(month)}
             </Text>
           </View>
         ) : null}
@@ -110,10 +116,10 @@ export function HomeScreen() {
             <Ionicons name="chevron-back" size={20} color={colors.primary} />
           </Pressable>
           <View style={styles.monthBox}>
-            <Text style={styles.monthLabel}>
-              {dayjs(month).format('MM/YYYY')}
+            <Text style={styles.monthLabel}>{formatThaiMonth(month)}</Text>
+            <Text style={styles.monthSub}>
+              {isCurrentMonth(month) ? 'รอบบิลเดือนนี้' : 'ไม่ใช่เดือนปัจจุบัน'}
             </Text>
-            <Text style={styles.monthSub}>รอบบิลเดือนนี้</Text>
           </View>
           <Pressable
             onPress={onNextMonth}

@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
+  type TextInput as NativeTextInput,
   Platform,
   Pressable,
   ScrollView,
@@ -18,18 +19,21 @@ import { useWork } from '@/context/WorkContext';
 import { useSaveUnit } from '@/hooks';
 import { colors } from '@/theme/colors';
 import type { UnitRow } from '@/types/api';
+import { checkReading } from '@/utils/meter-check';
 
 type Props = {
   unit: UnitRow;
   pageLabel: string;
-  onSaved: () => void;
+  /** This page is the one on screen (every page of the pager stays mounted). */
+  active: boolean;
+  onSaved: (unit: UnitRow) => void;
 };
 
 function isRecorded(unit: UnitRow) {
   return unit.unitNumber !== null && unit.unitNumber !== undefined;
 }
 
-export function UnitMeterForm({ unit, pageLabel, onSaved }: Props) {
+export function UnitMeterForm({ unit, pageLabel, active, onSaved }: Props) {
   const { month } = useWork();
   const saveUnit = useSaveUnit();
   const alreadyRecorded = isRecorded(unit);
@@ -47,11 +51,37 @@ export function UnitMeterForm({ unit, pageLabel, onSaved }: Props) {
     unit.previousMeterReading != null ? String(unit.previousMeterReading) : ''
   );
   const [cameraOpen, setCameraOpen] = useState(false);
+  const inputRef = useRef<NativeTextInput>(null);
+
+  // Only the visible page may hold the keyboard: focus it when it still needs a
+  // reading, and release it when the pager moves on.
+  useEffect(() => {
+    if (!active) {
+      inputRef.current?.blur();
+      return;
+    }
+    if (alreadyRecorded) return;
+    const timer = setTimeout(() => inputRef.current?.focus(), 250);
+    return () => clearTimeout(timer);
+  }, [active, alreadyRecorded]);
 
   const customerName =
     `${unit.prefix} ${unit.firstName ?? ''} ${unit.lastName ?? ''}`.trim();
 
-  const onSave = async () => {
+  const previous = unit.beforeData?.unitNumber ?? null;
+  const previousUsed = unit.beforeData?.unitUsed ?? null;
+  const check =
+    unitNumber.trim().length > 0
+      ? checkReading({
+          reading: Number(unitNumber),
+          previous,
+          previousUsed,
+          isMeterReplaced,
+          isMeterRolledOver,
+        })
+      : { used: null, warning: null };
+
+  const onSave = () => {
     const parsed = Number(unitNumber);
     if (Number.isNaN(parsed)) {
       Alert.alert('กรุณากรอกเลขมิเตอร์', 'ต้องเป็นตัวเลข');
@@ -61,7 +91,18 @@ export function UnitMeterForm({ unit, pageLabel, onSaved }: Props) {
       Alert.alert('ข้อมูลไม่ครบ', 'ไม่พบ zoneId');
       return;
     }
+    if (check.warning) {
+      Alert.alert('เลขมิเตอร์ดูผิดปกติ', check.warning, [
+        { text: 'แก้ไข', style: 'cancel' },
+        { text: 'บันทึกตามนี้', onPress: () => void save(parsed) },
+      ]);
+      return;
+    }
+    void save(parsed);
+  };
 
+  const save = async (parsed: number) => {
+    if (!unit.zoneId) return;
     try {
       await saveUnit.mutateAsync({
         date: month,
@@ -75,9 +116,7 @@ export function UnitMeterForm({ unit, pageLabel, onSaved }: Props) {
           ? Number(previousMeterReading) || 0
           : undefined,
       });
-      Alert.alert('บันทึกแล้ว', 'บันทึกเลขมิเตอร์สำเร็จ', [
-        { text: 'ตกลง', onPress: onSaved },
-      ]);
+      onSaved(unit);
     } catch (error) {
       const message =
         (error as { response?: { data?: { message?: string } } })?.response
@@ -164,6 +203,7 @@ export function UnitMeterForm({ unit, pageLabel, onSaved }: Props) {
             </Pressable>
           </View>
           <TextInput
+            ref={inputRef}
             mode="flat"
             value={unitNumber}
             onChangeText={setUnitNumber}
@@ -174,11 +214,46 @@ export function UnitMeterForm({ unit, pageLabel, onSaved }: Props) {
             contentStyle={styles.meterInputContent}
             underlineColor="transparent"
             activeUnderlineColor="transparent"
-            autoFocus={!alreadyRecorded}
           />
-          <Text variant="bodySmall" style={styles.meterHint}>
-            กรอกเอง หรือถ่ายหน้าปัดให้อยู่ในกรอบเพื่ออ่านเลขอัตโนมัติ
-          </Text>
+          <View style={styles.compareRow}>
+            <View style={styles.compareCell}>
+              <Text style={styles.compareLabel}>เลขเดือนก่อน</Text>
+              <Text style={styles.compareValue}>
+                {previous != null ? previous.toLocaleString() : '-'}
+              </Text>
+            </View>
+            <View style={styles.compareCell}>
+              <Text style={styles.compareLabel}>ใช้เดือนก่อน</Text>
+              <Text style={styles.compareValue}>
+                {previousUsed != null
+                  ? `${previousUsed.toLocaleString()} หน่วย`
+                  : '-'}
+              </Text>
+            </View>
+            <View style={styles.compareCell}>
+              <Text style={styles.compareLabel}>ใช้เดือนนี้</Text>
+              <Text
+                style={[
+                  styles.compareValue,
+                  check.warning ? styles.compareValueWarn : null,
+                ]}
+              >
+                {check.used != null
+                  ? `${check.used.toLocaleString()} หน่วย`
+                  : '-'}
+              </Text>
+            </View>
+          </View>
+          {check.warning ? (
+            <View style={styles.warnBox}>
+              <Ionicons name="warning" size={16} color={colors.warning} />
+              <Text style={styles.warnText}>{check.warning}</Text>
+            </View>
+          ) : (
+            <Text variant="bodySmall" style={styles.meterHint}>
+              กรอกเอง หรือถ่ายหน้าปัดให้อยู่ในกรอบเพื่ออ่านเลขอัตโนมัติ
+            </Text>
+          )}
         </View>
 
         <View style={styles.optionsCard}>
@@ -243,7 +318,7 @@ export function UnitMeterForm({ unit, pageLabel, onSaved }: Props) {
 
       <View style={styles.footer}>
         <PrimaryButton
-          label={saveUnit.isPending ? 'กำลังบันทึก...' : 'บันทึกแล้วกลับรายการ'}
+          label={saveUnit.isPending ? 'กำลังบันทึก...' : 'บันทึกและไปคนถัดไป'}
           onPress={onSave}
           disabled={saveUnit.isPending || unitNumber.trim().length === 0}
         />
@@ -391,6 +466,48 @@ const styles = StyleSheet.create({
   meterHint: {
     color: colors.textMuted,
     textAlign: 'center',
+  },
+  compareRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
+  },
+  compareCell: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  compareLabel: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  compareValue: {
+    marginTop: 2,
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  compareValueWarn: {
+    color: colors.warning,
+  },
+  warnBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: colors.warningMuted,
+    borderRadius: 12,
+    padding: 10,
+  },
+  warnText: {
+    flex: 1,
+    color: colors.warning,
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '600',
   },
   optionsCard: {
     backgroundColor: colors.surface,

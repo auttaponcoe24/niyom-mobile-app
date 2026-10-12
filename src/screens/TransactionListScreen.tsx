@@ -3,7 +3,6 @@ import { FlashList } from '@shopify/flash-list';
 import { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { ProgressBar, SegmentedButtons, Text } from 'react-native-paper';
-
 import { formatMoney, TransactionListRow } from '@/components/list-rows';
 import { Screen } from '@/components/Screen';
 import { ContextChip, EmptyState, SearchField } from '@/components/ui';
@@ -12,6 +11,7 @@ import { useGetTransactions } from '@/hooks';
 import type { PayStackParamList } from '@/navigation/types';
 import { colors } from '@/theme/colors';
 import type { TransactionRow } from '@/types/api';
+import { formatThaiMonth } from '@/utils/thai-date';
 
 type Props = NativeStackScreenProps<PayStackParamList, 'TransactionList'>;
 type Filter = 'all' | 'waiting' | 'paid';
@@ -113,7 +113,7 @@ export function TransactionListScreen({ navigation }: Props) {
   return (
     <Screen title="รับชำระ" subtitle="แตะรายการเพื่อรับชำระ" scroll={false}>
       <ContextChip
-        label={`${zone.zoneName} · ${unitType === 'W' ? 'น้ำ' : 'ไฟ'}`}
+        label={`${zone.zoneName} · ${unitType === 'W' ? 'น้ำ' : 'ไฟ'} · ${formatThaiMonth(month)}`}
       />
 
       <View style={styles.progressCard}>

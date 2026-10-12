@@ -3,9 +3,11 @@ import {
   createContext,
   type ReactNode,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from 'react';
+import { loadWorkSelection, saveWorkSelection } from '@/lib/work-storage';
 import type { UnitType, Zone } from '@/types/api';
 
 type WorkContextValue = {
@@ -25,11 +27,33 @@ export function WorkProvider({ children }: { children: ReactNode }) {
     dayjs().startOf('month').format('YYYY-MM-DD')
   );
   const [unitType, setUnitType] = useState<UnitType>('W');
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadWorkSelection().then((saved) => {
+      if (cancelled) return;
+      if (saved.zone) setZone(saved.zone);
+      if (saved.unitType) setUnitType(saved.unitType);
+      if (saved.month) setMonth(saved.month);
+      setHydrated(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (hydrated) void saveWorkSelection({ zone, unitType, month });
+  }, [hydrated, zone, unitType, month]);
 
   const value = useMemo(
     () => ({ zone, setZone, month, setMonth, unitType, setUnitType }),
     [zone, month, unitType]
   );
+
+  // Wait for the saved selection so screens never flash "no zone selected".
+  if (!hydrated) return null;
 
   return <WorkContext.Provider value={value}>{children}</WorkContext.Provider>;
 }

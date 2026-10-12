@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import {
   createContext,
   type ReactNode,
@@ -7,7 +8,9 @@ import {
   useMemo,
   useState,
 } from 'react';
+import { Alert } from 'react-native';
 
+import { isAuthRejection, setSessionExpiredHandler } from '@/api/httpClient';
 import {
   mobileGetProfile,
   mobileLogout,
@@ -60,8 +63,9 @@ async function restoreSession(): Promise<User | null> {
       refreshed.tokens.refreshToken
     );
     return refreshed.user;
-  } catch {
-    await clearTokens();
+  } catch (error) {
+    // Opening the app with no signal must not throw the saved login away.
+    if (isAuthRejection(error)) await clearTokens();
     return null;
   }
 }
@@ -69,6 +73,19 @@ async function restoreSession(): Promise<User | null> {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const queryClient = useQueryClient();
+
+  // The API refused the refresh token mid-session: back to login instead of
+  // leaving every screen showing "unauthenticated".
+  useEffect(() => {
+    setSessionExpiredHandler(() => {
+      setUser(null);
+      queryClient.clear();
+      Alert.alert('เซสชันหมดอายุ', 'กรุณาเข้าสู่ระบบใหม่อีกครั้ง');
+    });
+    return () => setSessionExpiredHandler(null);
+  }, [queryClient]);
 
   const refreshProfile = useCallback(async () => {
     const profile = await mobileGetProfile();
@@ -112,8 +129,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       await clearTokens();
       setUser(null);
+      queryClient.clear();
     }
-  }, []);
+  }, [queryClient]);
 
   const value = useMemo(
     () => ({

@@ -27,7 +27,6 @@ export function CustomerListScreen({ navigation }: Props) {
     {
       zoneId: zone?.id,
       search: search || undefined,
-      limit: 50,
     },
     { enabled: Boolean(zone?.id) }
   );

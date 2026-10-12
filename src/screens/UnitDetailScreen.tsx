@@ -1,7 +1,15 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { Alert, StyleSheet, View } from 'react-native';
 import PagerView from 'react-native-pager-view';
+import { Snackbar } from 'react-native-paper';
 
 import { Screen } from '@/components/Screen';
 import { UnitMeterForm } from '@/components/UnitMeterForm';
@@ -14,6 +22,20 @@ type Props = NativeStackScreenProps<UnitsStackParamList, 'UnitDetail'>;
 
 function unitKey(unit: UnitRow) {
   return `${unit.customerId}-${unit.type}`;
+}
+
+function isRecorded(unit: UnitRow) {
+  return unit.unitNumber !== null && unit.unitNumber !== undefined;
+}
+
+/** Next page still missing a reading: forward from `from`, then wrap to the start. */
+function findNextPending(units: UnitRow[], from: number, savedKey: string) {
+  for (let step = 1; step < units.length; step += 1) {
+    const index = (from + step) % units.length;
+    const unit = units[index];
+    if (unitKey(unit) !== savedKey && !isRecorded(unit)) return index;
+  }
+  return -1;
 }
 
 export function UnitDetailScreen({ route, navigation }: Props) {
@@ -73,6 +95,28 @@ export function UnitDetailScreen({ route, navigation }: Props) {
     });
   }, [navigation, page, units.length]);
 
+  const [savedName, setSavedName] = useState<string | null>(null);
+
+  const onSaved = useCallback(
+    (saved: UnitRow) => {
+      const savedKey = unitKey(saved);
+      const from = units.findIndex((row) => unitKey(row) === savedKey);
+      const next = findNextPending(units, Math.max(from, 0), savedKey);
+      if (next < 0) {
+        Alert.alert('จดครบแล้ว', 'จดเลขมิเตอร์ครบทุกรายการในโซนนี้แล้ว', [
+          { text: 'กลับรายการ', onPress: () => navigation.goBack() },
+        ]);
+        return;
+      }
+      setSavedName(
+        `${saved.firstName ?? ''} ${saved.lastName ?? ''}`.trim() ||
+          `#${saved.no ?? '-'}`
+      );
+      pagerRef.current?.setPage(next);
+    },
+    [navigation, units]
+  );
+
   return (
     <Screen
       edges={['left', 'right', 'bottom']}
@@ -93,11 +137,20 @@ export function UnitDetailScreen({ route, navigation }: Props) {
             <UnitMeterForm
               unit={unit}
               pageLabel={`${index + 1}/${units.length}`}
-              onSaved={() => navigation.goBack()}
+              active={index === page}
+              onSaved={onSaved}
             />
           </View>
         ))}
       </PagerView>
+      <Snackbar
+        visible={savedName !== null}
+        onDismiss={() => setSavedName(null)}
+        duration={1800}
+        wrapperStyle={styles.snackbar}
+      >
+        {`บันทึกแล้ว: ${savedName ?? ''}`}
+      </Snackbar>
     </Screen>
   );
 }
@@ -109,6 +162,11 @@ const styles = StyleSheet.create({
   },
   pager: {
     flex: 1,
+  },
+  // Top of the screen: the bottom is taken by the save button.
+  snackbar: {
+    top: 0,
+    bottom: undefined,
   },
   page: {
     flex: 1,
