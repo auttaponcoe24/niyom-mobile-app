@@ -11,11 +11,11 @@ import {
   View,
 } from 'react-native';
 import { Text, TextInput } from 'react-native-paper';
-
 import { formatMoney } from '@/components/list-rows';
 import { Screen } from '@/components/Screen';
 import { PrimaryButton } from '@/components/ui';
 import { usePayTransaction } from '@/hooks';
+import { useKeyboardOffset } from '@/hooks/useKeyboardOffset';
 import type { PayStackParamList } from '@/navigation/types';
 import { colors } from '@/theme/colors';
 
@@ -24,6 +24,7 @@ type Props = NativeStackScreenProps<PayStackParamList, 'PayDetail'>;
 export function PayDetailScreen({ route, navigation }: Props) {
   const { transaction } = route.params;
   const payMutation = usePayTransaction();
+  const keyboard = useKeyboardOffset();
   const defaultPay =
     transaction.remain != null && transaction.remain > 0
       ? transaction.remain
@@ -101,119 +102,121 @@ export function PayDetailScreen({ route, navigation }: Props) {
       scroll={false}
       style={styles.screen}
     >
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={88}
-      >
-        <ScrollView
+      <View ref={keyboard.ref} onLayout={keyboard.onLayout} style={styles.flex}>
+        <KeyboardAvoidingView
           style={styles.flex}
-          contentContainerStyle={styles.body}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={keyboard.offset}
         >
-          <LinearGradient
-            colors={paid ? ['#027A48', '#134734'] : ['#1F6B4A', '#134734']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.hero}
+          <ScrollView
+            style={styles.flex}
+            contentContainerStyle={styles.body}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            <View style={styles.heroTop}>
-              <View style={styles.indexPill}>
-                <Text style={styles.indexText}>#{transaction.no ?? '-'}</Text>
-              </View>
-              <View
-                style={[
-                  styles.statusPill,
-                  paid ? styles.statusDone : styles.statusPending,
-                ]}
-              >
-                <Text
+            <LinearGradient
+              colors={paid ? ['#027A48', '#134734'] : ['#1F6B4A', '#134734']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.hero}
+            >
+              <View style={styles.heroTop}>
+                <View style={styles.indexPill}>
+                  <Text style={styles.indexText}>#{transaction.no ?? '-'}</Text>
+                </View>
+                <View
                   style={[
-                    styles.statusText,
-                    paid ? styles.statusTextDone : styles.statusTextPending,
+                    styles.statusPill,
+                    paid ? styles.statusDone : styles.statusPending,
                   ]}
                 >
-                  {paid ? 'ชำระแล้ว' : 'รอชำระ'}
-                </Text>
+                  <Text
+                    style={[
+                      styles.statusText,
+                      paid ? styles.statusTextDone : styles.statusTextPending,
+                    ]}
+                  >
+                    {paid ? 'ชำระแล้ว' : 'รอชำระ'}
+                  </Text>
+                </View>
               </View>
+              <Text style={styles.customerName}>{customerName}</Text>
+              <Text style={styles.metaLine}>
+                บ้านเลขที่ {transaction.houseNumber || '-'} ·{' '}
+                {transaction.type === 'W' ? 'มิเตอร์น้ำ' : 'มิเตอร์ไฟ'}
+              </Text>
+              <Text style={styles.totalHero}>
+                รวม {formatMoney(transaction.total)} บาท
+              </Text>
+            </LinearGradient>
+
+            <View style={styles.summaryCard}>
+              <MetaRow
+                icon="receipt-outline"
+                label="ค่าใช้จ่าย"
+                value={formatMoney(transaction.amount)}
+              />
+              <View style={styles.divider} />
+              <MetaRow
+                icon="time-outline"
+                label="ค้างชำระ"
+                value={formatMoney(transaction.overDue)}
+              />
+              <View style={styles.divider} />
+              <MetaRow
+                icon="wallet-outline"
+                label="คงเหลือ"
+                value={formatMoney(transaction.remain)}
+                emphasize
+              />
             </View>
-            <Text style={styles.customerName}>{customerName}</Text>
-            <Text style={styles.metaLine}>
-              บ้านเลขที่ {transaction.houseNumber || '-'} ·{' '}
-              {transaction.type === 'W' ? 'มิเตอร์น้ำ' : 'มิเตอร์ไฟ'}
-            </Text>
-            <Text style={styles.totalHero}>
-              รวม {formatMoney(transaction.total)} บาท
-            </Text>
-          </LinearGradient>
 
-          <View style={styles.summaryCard}>
-            <MetaRow
-              icon="receipt-outline"
-              label="ค่าใช้จ่าย"
-              value={formatMoney(transaction.amount)}
-            />
-            <View style={styles.divider} />
-            <MetaRow
-              icon="time-outline"
-              label="ค้างชำระ"
-              value={formatMoney(transaction.overDue)}
-            />
-            <View style={styles.divider} />
-            <MetaRow
-              icon="wallet-outline"
-              label="คงเหลือ"
-              value={formatMoney(transaction.remain)}
-              emphasize
+            <View style={styles.payCard}>
+              <Text variant="labelLarge" style={styles.payLabel}>
+                ยอดที่รับชำระ
+              </Text>
+              <TextInput
+                mode="flat"
+                value={pay}
+                onChangeText={setPay}
+                keyboardType="decimal-pad"
+                editable={!paid}
+                placeholder="0"
+                placeholderTextColor={colors.textMuted}
+                style={styles.payInput}
+                contentStyle={styles.payInputContent}
+                underlineColor="transparent"
+                activeUnderlineColor="transparent"
+              />
+              <Text
+                variant="bodySmall"
+                style={[
+                  styles.payHint,
+                  !paid && diffNote ? styles.payHintWarn : null,
+                ]}
+              >
+                {paid
+                  ? 'รายการนี้ชำระครบแล้ว'
+                  : (diffNote ?? 'กรอกยอดที่รับจริงจากลูกค้า')}
+              </Text>
+            </View>
+          </ScrollView>
+
+          <View style={styles.footer}>
+            <PrimaryButton
+              label={
+                paid
+                  ? 'ชำระแล้ว'
+                  : payMutation.isPending
+                    ? 'กำลังบันทึก...'
+                    : 'ยืนยันรับชำระ'
+              }
+              onPress={onPay}
+              disabled={payMutation.isPending || paid}
             />
           </View>
-
-          <View style={styles.payCard}>
-            <Text variant="labelLarge" style={styles.payLabel}>
-              ยอดที่รับชำระ
-            </Text>
-            <TextInput
-              mode="flat"
-              value={pay}
-              onChangeText={setPay}
-              keyboardType="decimal-pad"
-              editable={!paid}
-              placeholder="0"
-              placeholderTextColor={colors.textMuted}
-              style={styles.payInput}
-              contentStyle={styles.payInputContent}
-              underlineColor="transparent"
-              activeUnderlineColor="transparent"
-            />
-            <Text
-              variant="bodySmall"
-              style={[
-                styles.payHint,
-                !paid && diffNote ? styles.payHintWarn : null,
-              ]}
-            >
-              {paid
-                ? 'รายการนี้ชำระครบแล้ว'
-                : (diffNote ?? 'กรอกยอดที่รับจริงจากลูกค้า')}
-            </Text>
-          </View>
-        </ScrollView>
-
-        <View style={styles.footer}>
-          <PrimaryButton
-            label={
-              paid
-                ? 'ชำระแล้ว'
-                : payMutation.isPending
-                  ? 'กำลังบันทึก...'
-                  : 'ยืนยันรับชำระ'
-            }
-            onPress={onPay}
-            disabled={payMutation.isPending || paid}
-          />
-        </View>
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </View>
     </Screen>
   );
 }

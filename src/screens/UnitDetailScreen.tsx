@@ -28,6 +28,9 @@ function isRecorded(unit: UnitRow) {
   return unit.unitNumber !== null && unit.unitNumber !== undefined;
 }
 
+/** Forms are only built for the visible page and this many neighbours each side. */
+const WINDOW = 1;
+
 /** Next page still missing a reading: forward from `from`, then wrap to the start. */
 function findNextPending(units: UnitRow[], from: number, savedKey: string) {
   for (let step = 1; step < units.length; step += 1) {
@@ -68,6 +71,8 @@ export function UnitDetailScreen({ route, navigation }: Props) {
   }, [units, initialUnit]);
 
   const [page, setPage] = useState(initialIndex);
+  // Page being jumped to after a save, mounted ahead so it is ready on arrival.
+  const [target, setTarget] = useState<number | null>(null);
 
   useEffect(() => {
     setPage(initialIndex);
@@ -112,7 +117,13 @@ export function UnitDetailScreen({ route, navigation }: Props) {
         `${saved.firstName ?? ''} ${saved.lastName ?? ''}`.trim() ||
           `#${saved.no ?? '-'}`
       );
-      pagerRef.current?.setPage(next);
+      setTarget(next);
+      // A far jump would scroll past every house in between — go straight there.
+      if (Math.abs(next - from) > 1) {
+        pagerRef.current?.setPageWithoutAnimation(next);
+      } else {
+        pagerRef.current?.setPage(next);
+      }
     },
     [navigation, units]
   );
@@ -129,17 +140,22 @@ export function UnitDetailScreen({ route, navigation }: Props) {
         initialPage={initialIndex}
         onPageSelected={(event) => {
           setPage(event.nativeEvent.position);
+          setTarget(null);
         }}
         overdrag
       >
         {units.map((unit, index) => (
           <View key={unitKey(unit)} collapsable={false} style={styles.page}>
-            <UnitMeterForm
-              unit={unit}
-              pageLabel={`${index + 1}/${units.length}`}
-              active={index === page}
-              onSaved={onSaved}
-            />
+            {/* A zone can hold hundreds of houses: off-screen pages stay empty. */}
+            {Math.abs(index - page) <= WINDOW ||
+            (target !== null && Math.abs(index - target) <= WINDOW) ? (
+              <UnitMeterForm
+                unit={unit}
+                pageLabel={`${index + 1}/${units.length}`}
+                active={index === page}
+                onSaved={onSaved}
+              />
+            ) : null}
           </View>
         ))}
       </PagerView>

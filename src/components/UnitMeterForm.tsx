@@ -17,6 +17,7 @@ import { MeterCaptureModal } from '@/components/MeterCaptureModal';
 import { PrimaryButton } from '@/components/ui';
 import { useWork } from '@/context/WorkContext';
 import { useSaveUnit } from '@/hooks';
+import { useKeyboardOffset } from '@/hooks/useKeyboardOffset';
 import { colors } from '@/theme/colors';
 import type { UnitRow } from '@/types/api';
 import { checkReading } from '@/utils/meter-check';
@@ -36,6 +37,7 @@ function isRecorded(unit: UnitRow) {
 export function UnitMeterForm({ unit, pageLabel, active, onSaved }: Props) {
   const { month } = useWork();
   const saveUnit = useSaveUnit();
+  const keyboard = useKeyboardOffset();
   const alreadyRecorded = isRecorded(unit);
 
   const [unitNumber, setUnitNumber] = useState(
@@ -126,210 +128,212 @@ export function UnitMeterForm({ unit, pageLabel, active, onSaved }: Props) {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={88}
-    >
-      <ScrollView
+    <View ref={keyboard.ref} onLayout={keyboard.onLayout} style={styles.flex}>
+      <KeyboardAvoidingView
         style={styles.flex}
-        contentContainerStyle={styles.body}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={keyboard.offset}
       >
-        <LinearGradient
-          colors={['#1F6B4A', '#134734']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.hero}
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.body}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <View style={styles.heroTop}>
-            <View style={styles.indexPill}>
-              <Text style={styles.indexText}>#{unit.no ?? '-'}</Text>
-            </View>
-            <View
-              style={[
-                styles.statusPill,
-                alreadyRecorded ? styles.statusDone : styles.statusPending,
-              ]}
-            >
-              <Text
+          <LinearGradient
+            colors={['#1F6B4A', '#134734']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.hero}
+          >
+            <View style={styles.heroTop}>
+              <View style={styles.indexPill}>
+                <Text style={styles.indexText}>#{unit.no ?? '-'}</Text>
+              </View>
+              <View
                 style={[
-                  styles.statusText,
-                  alreadyRecorded
-                    ? styles.statusTextDone
-                    : styles.statusTextPending,
+                  styles.statusPill,
+                  alreadyRecorded ? styles.statusDone : styles.statusPending,
                 ]}
               >
-                {alreadyRecorded ? 'เคยจดแล้ว' : 'ยังไม่จด'}
-              </Text>
+                <Text
+                  style={[
+                    styles.statusText,
+                    alreadyRecorded
+                      ? styles.statusTextDone
+                      : styles.statusTextPending,
+                  ]}
+                >
+                  {alreadyRecorded ? 'เคยจดแล้ว' : 'ยังไม่จด'}
+                </Text>
+              </View>
             </View>
-          </View>
-          <Text style={styles.customerName}>{customerName}</Text>
-          <Text style={styles.metaLine}>
-            บ้านเลขที่ {unit.houseNumber || '-'} ·{' '}
-            {unit.type === 'W' ? 'มิเตอร์น้ำ' : 'มิเตอร์ไฟ'}
-          </Text>
-          <View style={styles.swipeHint}>
-            <Ionicons
-              name="chevron-back"
-              size={14}
-              color="rgba(255,255,255,0.7)"
-            />
-            <Text style={styles.swipeHintText}>
-              ปัดซ้าย/ขวาเปลี่ยนคน · {pageLabel}
+            <Text style={styles.customerName}>{customerName}</Text>
+            <Text style={styles.metaLine}>
+              บ้านเลขที่ {unit.houseNumber || '-'} ·{' '}
+              {unit.type === 'W' ? 'มิเตอร์น้ำ' : 'มิเตอร์ไฟ'}
             </Text>
-            <Ionicons
-              name="chevron-forward"
-              size={14}
-              color="rgba(255,255,255,0.7)"
-            />
-          </View>
-        </LinearGradient>
-
-        <View style={styles.meterCard}>
-          <View style={styles.meterHeader}>
-            <Text variant="labelLarge" style={styles.meterLabel}>
-              เลขมิเตอร์เดือนนี้
-            </Text>
-            <Pressable
-              onPress={() => setCameraOpen(true)}
-              style={styles.cameraBtn}
-              accessibilityRole="button"
-              accessibilityLabel="ถ่ายภาพอ่านเลขมิเตอร์"
-            >
-              <Ionicons name="camera" size={18} color={colors.primary} />
-              <Text style={styles.cameraBtnText}>ถ่ายภาพ</Text>
-            </Pressable>
-          </View>
-          <TextInput
-            ref={inputRef}
-            mode="flat"
-            value={unitNumber}
-            onChangeText={setUnitNumber}
-            keyboardType="number-pad"
-            placeholder="0"
-            placeholderTextColor={colors.textMuted}
-            style={styles.meterInput}
-            contentStyle={styles.meterInputContent}
-            underlineColor="transparent"
-            activeUnderlineColor="transparent"
-          />
-          <View style={styles.compareRow}>
-            <View style={styles.compareCell}>
-              <Text style={styles.compareLabel}>เลขเดือนก่อน</Text>
-              <Text style={styles.compareValue}>
-                {previous != null ? previous.toLocaleString() : '-'}
-              </Text>
-            </View>
-            <View style={styles.compareCell}>
-              <Text style={styles.compareLabel}>ใช้เดือนก่อน</Text>
-              <Text style={styles.compareValue}>
-                {previousUsed != null
-                  ? `${previousUsed.toLocaleString()} หน่วย`
-                  : '-'}
-              </Text>
-            </View>
-            <View style={styles.compareCell}>
-              <Text style={styles.compareLabel}>ใช้เดือนนี้</Text>
-              <Text
-                style={[
-                  styles.compareValue,
-                  check.warning ? styles.compareValueWarn : null,
-                ]}
-              >
-                {check.used != null
-                  ? `${check.used.toLocaleString()} หน่วย`
-                  : '-'}
-              </Text>
-            </View>
-          </View>
-          {check.warning ? (
-            <View style={styles.warnBox}>
-              <Ionicons name="warning" size={16} color={colors.warning} />
-              <Text style={styles.warnText}>{check.warning}</Text>
-            </View>
-          ) : (
-            <Text variant="bodySmall" style={styles.meterHint}>
-              กรอกเอง หรือถ่ายหน้าปัดให้อยู่ในกรอบเพื่ออ่านเลขอัตโนมัติ
-            </Text>
-          )}
-        </View>
-
-        <View style={styles.optionsCard}>
-          <View style={styles.optionRow}>
-            <View style={styles.optionIcon}>
+            <View style={styles.swipeHint}>
               <Ionicons
-                name="swap-horizontal"
-                size={18}
+                name="chevron-back"
+                size={14}
+                color="rgba(255,255,255,0.7)"
+              />
+              <Text style={styles.swipeHintText}>
+                ปัดซ้าย/ขวาเปลี่ยนคน · {pageLabel}
+              </Text>
+              <Ionicons
+                name="chevron-forward"
+                size={14}
+                color="rgba(255,255,255,0.7)"
+              />
+            </View>
+          </LinearGradient>
+
+          <View style={styles.meterCard}>
+            <View style={styles.meterHeader}>
+              <Text variant="labelLarge" style={styles.meterLabel}>
+                เลขมิเตอร์เดือนนี้
+              </Text>
+              <Pressable
+                onPress={() => setCameraOpen(true)}
+                style={styles.cameraBtn}
+                accessibilityRole="button"
+                accessibilityLabel="ถ่ายภาพอ่านเลขมิเตอร์"
+              >
+                <Ionicons name="camera" size={18} color={colors.primary} />
+                <Text style={styles.cameraBtnText}>ถ่ายภาพ</Text>
+              </Pressable>
+            </View>
+            <TextInput
+              ref={inputRef}
+              mode="flat"
+              value={unitNumber}
+              onChangeText={setUnitNumber}
+              keyboardType="number-pad"
+              placeholder="0"
+              placeholderTextColor={colors.textMuted}
+              style={styles.meterInput}
+              contentStyle={styles.meterInputContent}
+              underlineColor="transparent"
+              activeUnderlineColor="transparent"
+            />
+            <View style={styles.compareRow}>
+              <View style={styles.compareCell}>
+                <Text style={styles.compareLabel}>เลขเดือนก่อน</Text>
+                <Text style={styles.compareValue}>
+                  {previous != null ? previous.toLocaleString() : '-'}
+                </Text>
+              </View>
+              <View style={styles.compareCell}>
+                <Text style={styles.compareLabel}>ใช้เดือนก่อน</Text>
+                <Text style={styles.compareValue}>
+                  {previousUsed != null
+                    ? `${previousUsed.toLocaleString()} หน่วย`
+                    : '-'}
+                </Text>
+              </View>
+              <View style={styles.compareCell}>
+                <Text style={styles.compareLabel}>ใช้เดือนนี้</Text>
+                <Text
+                  style={[
+                    styles.compareValue,
+                    check.warning ? styles.compareValueWarn : null,
+                  ]}
+                >
+                  {check.used != null
+                    ? `${check.used.toLocaleString()} หน่วย`
+                    : '-'}
+                </Text>
+              </View>
+            </View>
+            {check.warning ? (
+              <View style={styles.warnBox}>
+                <Ionicons name="warning" size={16} color={colors.warning} />
+                <Text style={styles.warnText}>{check.warning}</Text>
+              </View>
+            ) : (
+              <Text variant="bodySmall" style={styles.meterHint}>
+                กรอกเอง หรือถ่ายหน้าปัดให้อยู่ในกรอบเพื่ออ่านเลขอัตโนมัติ
+              </Text>
+            )}
+          </View>
+
+          <View style={styles.optionsCard}>
+            <View style={styles.optionRow}>
+              <View style={styles.optionIcon}>
+                <Ionicons
+                  name="swap-horizontal"
+                  size={18}
+                  color={colors.primary}
+                />
+              </View>
+              <View style={styles.optionText}>
+                <Text variant="titleSmall" style={styles.optionTitle}>
+                  เปลี่ยนมิเตอร์
+                </Text>
+                <Text variant="bodySmall" style={styles.optionHint}>
+                  มีการเปลี่ยนเครื่องใหม่ในรอบนี้
+                </Text>
+              </View>
+              <Switch
+                value={isMeterReplaced}
+                onValueChange={setIsMeterReplaced}
                 color={colors.primary}
               />
             </View>
-            <View style={styles.optionText}>
-              <Text variant="titleSmall" style={styles.optionTitle}>
-                เปลี่ยนมิเตอร์
-              </Text>
-              <Text variant="bodySmall" style={styles.optionHint}>
-                มีการเปลี่ยนเครื่องใหม่ในรอบนี้
-              </Text>
-            </View>
-            <Switch
-              value={isMeterReplaced}
-              onValueChange={setIsMeterReplaced}
-              color={colors.primary}
-            />
-          </View>
 
-          {isMeterReplaced ? (
-            <View style={styles.previousWrap}>
-              <TextInput
-                mode="outlined"
-                label="เลขมิเตอร์เครื่องเก่า"
-                value={previousMeterReading}
-                onChangeText={setPreviousMeterReading}
-                keyboardType="number-pad"
-                style={styles.previousInput}
+            {isMeterReplaced ? (
+              <View style={styles.previousWrap}>
+                <TextInput
+                  mode="outlined"
+                  label="เลขมิเตอร์เครื่องเก่า"
+                  value={previousMeterReading}
+                  onChangeText={setPreviousMeterReading}
+                  keyboardType="number-pad"
+                  style={styles.previousInput}
+                />
+              </View>
+            ) : null}
+
+            <View style={styles.optionDivider} />
+
+            <View style={styles.optionRow}>
+              <View style={styles.optionIcon}>
+                <Ionicons name="refresh" size={18} color={colors.primary} />
+              </View>
+              <View style={styles.optionText}>
+                <Text variant="titleSmall" style={styles.optionTitle}>
+                  มิเตอร์หมุนครบรอบ
+                </Text>
+                <Text variant="bodySmall" style={styles.optionHint}>
+                  หน้าปัดหมุนกลับไปเริ่มต้นใหม่
+                </Text>
+              </View>
+              <Switch
+                value={isMeterRolledOver}
+                onValueChange={setIsMeterRolledOver}
+                color={colors.primary}
               />
             </View>
-          ) : null}
-
-          <View style={styles.optionDivider} />
-
-          <View style={styles.optionRow}>
-            <View style={styles.optionIcon}>
-              <Ionicons name="refresh" size={18} color={colors.primary} />
-            </View>
-            <View style={styles.optionText}>
-              <Text variant="titleSmall" style={styles.optionTitle}>
-                มิเตอร์หมุนครบรอบ
-              </Text>
-              <Text variant="bodySmall" style={styles.optionHint}>
-                หน้าปัดหมุนกลับไปเริ่มต้นใหม่
-              </Text>
-            </View>
-            <Switch
-              value={isMeterRolledOver}
-              onValueChange={setIsMeterRolledOver}
-              color={colors.primary}
-            />
           </View>
+        </ScrollView>
+
+        <View style={styles.footer}>
+          <PrimaryButton
+            label={saveUnit.isPending ? 'กำลังบันทึก...' : 'บันทึกและไปคนถัดไป'}
+            onPress={onSave}
+            disabled={saveUnit.isPending || unitNumber.trim().length === 0}
+          />
         </View>
-      </ScrollView>
 
-      <View style={styles.footer}>
-        <PrimaryButton
-          label={saveUnit.isPending ? 'กำลังบันทึก...' : 'บันทึกและไปคนถัดไป'}
-          onPress={onSave}
-          disabled={saveUnit.isPending || unitNumber.trim().length === 0}
+        <MeterCaptureModal
+          visible={cameraOpen}
+          onClose={() => setCameraOpen(false)}
+          onReading={setUnitNumber}
         />
-      </View>
-
-      <MeterCaptureModal
-        visible={cameraOpen}
-        onClose={() => setCameraOpen(false)}
-        onReading={setUnitNumber}
-      />
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
