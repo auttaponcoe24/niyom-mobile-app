@@ -5,13 +5,14 @@ import { StyleSheet, View } from 'react-native';
 import { ProgressBar, SegmentedButtons, Text } from 'react-native-paper';
 import { formatMoney, TransactionListRow } from '@/components/list-rows';
 import { Screen } from '@/components/Screen';
-import { ContextChip, EmptyState, SearchField } from '@/components/ui';
+import { EmptyState, SearchField } from '@/components/ui';
+import { WorkContextBar } from '@/components/WorkContextBar';
 import { useWork } from '@/context/WorkContext';
 import { useGetTransactions } from '@/hooks';
 import type { PayStackParamList } from '@/navigation/types';
 import { colors } from '@/theme/colors';
 import type { TransactionRow } from '@/types/api';
-import { formatThaiMonth } from '@/utils/thai-date';
+import { matchesSearch } from '@/utils/search';
 
 type Props = NativeStackScreenProps<PayStackParamList, 'TransactionList'>;
 type Filter = 'all' | 'waiting' | 'paid';
@@ -34,7 +35,6 @@ export function TransactionListScreen({ navigation }: Props) {
       zoneId: zone?.id ?? 0,
       date: month,
       type: unitType,
-      search: search || undefined,
       limit: 100,
     },
     { enabled: Boolean(zone?.id) }
@@ -50,11 +50,22 @@ export function TransactionListScreen({ navigation }: Props) {
     return { total: rows.length, paid, waiting: rows.length - paid };
   }, [rows]);
 
-  const filteredRows = useMemo(() => {
-    if (filter === 'waiting') return rows.filter((row) => !isPaid(row));
-    if (filter === 'paid') return rows.filter(isPaid);
-    return rows;
-  }, [filter, rows]);
+  // Searched on the device: the whole zone is already loaded, and the progress
+  // counts above must not shrink to the search results.
+  const filteredRows = useMemo(
+    () =>
+      rows.filter((row) => {
+        if (filter === 'waiting' && isPaid(row)) return false;
+        if (filter === 'paid' && !isPaid(row)) return false;
+        return matchesSearch(search, [
+          row.firstName,
+          row.lastName,
+          row.houseNumber,
+          row.no,
+        ]);
+      }),
+    [filter, rows, search]
+  );
 
   const transactionsByKey = useMemo(() => {
     const map = new Map<string, TransactionRow>();
@@ -112,9 +123,7 @@ export function TransactionListScreen({ navigation }: Props) {
 
   return (
     <Screen title="รับชำระ" subtitle="แตะรายการเพื่อรับชำระ" scroll={false}>
-      <ContextChip
-        label={`${zone.zoneName} · ${unitType === 'W' ? 'น้ำ' : 'ไฟ'} · ${formatThaiMonth(month)}`}
-      />
+      <WorkContextBar />
 
       <View style={styles.progressCard}>
         <View style={styles.progressHead}>
@@ -163,11 +172,13 @@ export function TransactionListScreen({ navigation }: Props) {
           txQuery.isLoading ? null : (
             <EmptyState
               message={
-                filter === 'waiting'
-                  ? 'รับชำระครบแล้วในรอบนี้'
-                  : filter === 'paid'
-                    ? 'ยังไม่มีรายการที่ชำระแล้ว'
-                    : 'ไม่พบรายการบิล'
+                search.trim()
+                  ? 'ไม่พบรายการที่ค้นหา'
+                  : filter === 'waiting'
+                    ? 'รับชำระครบแล้วในรอบนี้'
+                    : filter === 'paid'
+                      ? 'ยังไม่มีรายการที่ชำระแล้ว'
+                      : 'ไม่พบรายการบิล'
               }
             />
           )

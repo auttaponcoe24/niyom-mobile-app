@@ -12,6 +12,7 @@ import { useGetCustomers } from '@/hooks';
 import type { CustomersStackParamList } from '@/navigation/types';
 import { colors } from '@/theme/colors';
 import type { Customer } from '@/types/api';
+import { matchesSearch } from '@/utils/search';
 
 type Props = NativeStackScreenProps<CustomersStackParamList, 'CustomerList'>;
 
@@ -26,14 +27,27 @@ export function CustomerListScreen({ navigation }: Props) {
   const customersQuery = useGetCustomers(
     {
       zoneId: zone?.id,
-      search: search || undefined,
     },
     { enabled: Boolean(zone?.id) }
   );
 
-  const rows = useMemo(
+  const allRows = useMemo(
     () => customersQuery.data?.data ?? [],
     [customersQuery.data?.data]
+  );
+
+  const rows = useMemo(
+    () =>
+      allRows.filter((row) =>
+        matchesSearch(search, [
+          row.firstName,
+          row.lastName,
+          row.houseNumber,
+          row.phoneNumber,
+          row.no,
+        ])
+      ),
+    [allRows, search]
   );
 
   const onPressCustomer = useCallback(
@@ -85,7 +99,7 @@ export function CustomerListScreen({ navigation }: Props) {
           ลูกค้าในโซนนี้
         </Text>
         <Text variant="headlineSmall" style={styles.statsCount}>
-          {rows.length}
+          {allRows.length}
         </Text>
         <Text variant="bodySmall" style={styles.statsHint}>
           แตะรายชื่อเพื่อดูรายละเอียด

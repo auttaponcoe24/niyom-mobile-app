@@ -5,13 +5,14 @@ import { StyleSheet, View } from 'react-native';
 import { ProgressBar, SegmentedButtons, Text } from 'react-native-paper';
 import { UnitListRow } from '@/components/list-rows';
 import { Screen } from '@/components/Screen';
-import { ContextChip, EmptyState, SearchField } from '@/components/ui';
+import { EmptyState, SearchField } from '@/components/ui';
+import { WorkContextBar } from '@/components/WorkContextBar';
 import { useWork } from '@/context/WorkContext';
 import { useGetUnits } from '@/hooks';
 import type { UnitsStackParamList } from '@/navigation/types';
 import { colors } from '@/theme/colors';
 import type { UnitRow } from '@/types/api';
-import { formatThaiMonth } from '@/utils/thai-date';
+import { matchesSearch } from '@/utils/search';
 
 type Props = NativeStackScreenProps<UnitsStackParamList, 'UnitRoute'>;
 type Filter = 'all' | 'pending' | 'done';
@@ -34,7 +35,6 @@ export function UnitRouteScreen({ navigation }: Props) {
       zoneId: zone?.id ?? 0,
       date: month,
       type: unitType,
-      search: search || undefined,
       limit: 100,
     },
     { enabled: Boolean(zone?.id) }
@@ -53,11 +53,22 @@ export function UnitRouteScreen({ navigation }: Props) {
     return { total: rows.length, done, pending: rows.length - done };
   }, [rows]);
 
-  const filteredRows = useMemo(() => {
-    if (filter === 'pending') return rows.filter((row) => !isRecorded(row));
-    if (filter === 'done') return rows.filter(isRecorded);
-    return rows;
-  }, [filter, rows]);
+  // Searched on the device: the whole zone is already loaded, and the progress
+  // counts above must not shrink to the search results.
+  const filteredRows = useMemo(
+    () =>
+      rows.filter((row) => {
+        if (filter === 'pending' && isRecorded(row)) return false;
+        if (filter === 'done' && !isRecorded(row)) return false;
+        return matchesSearch(search, [
+          row.firstName,
+          row.lastName,
+          row.houseNumber,
+          row.no,
+        ]);
+      }),
+    [filter, rows, search]
+  );
 
   const unitsByKey = useMemo(() => {
     const map = new Map<string, UnitRow>();
@@ -115,9 +126,7 @@ export function UnitRouteScreen({ navigation }: Props) {
 
   return (
     <Screen title="จดมิเตอร์" subtitle="แตะรายการเพื่อจดเลขมิเตอร์" scroll={false}>
-      <ContextChip
-        label={`${zone.zoneName} · ${unitType === 'W' ? 'น้ำ' : 'ไฟ'} · ${formatThaiMonth(month)}`}
-      />
+      <WorkContextBar />
 
       <View style={styles.progressCard}>
         <View style={styles.progressHead}>
@@ -166,11 +175,13 @@ export function UnitRouteScreen({ navigation }: Props) {
           unitsQuery.isLoading ? null : (
             <EmptyState
               message={
-                filter === 'pending'
-                  ? 'จดครบแล้วในรอบนี้'
-                  : filter === 'done'
-                    ? 'ยังไม่มีรายการที่จดแล้ว'
-                    : 'ไม่พบรายการในโซนนี้'
+                search.trim()
+                  ? 'ไม่พบรายการที่ค้นหา'
+                  : filter === 'pending'
+                    ? 'จดครบแล้วในรอบนี้'
+                    : filter === 'done'
+                      ? 'ยังไม่มีรายการที่จดแล้ว'
+                      : 'ไม่พบรายการในโซนนี้'
               }
             />
           )

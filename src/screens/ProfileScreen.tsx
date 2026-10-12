@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 
 import { Screen } from '@/components/Screen';
@@ -13,11 +13,25 @@ export function ProfileScreen() {
   const initials =
     `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}`.toUpperCase() ||
     'N';
+  const roleLabel =
+    user?.role === 'ADMIN' ? 'เจ้าหน้าที่' : user?.role === 'USER' ? 'ผู้ใช้งาน' : '-';
+
+  const confirmSignOut = () => {
+    Alert.alert('ออกจากระบบ?', 'ครั้งต่อไปต้องขอรหัส OTP ทางมือถือเพื่อเข้าสู่ระบบใหม่', [
+      { text: 'ยกเลิก', style: 'cancel' },
+      {
+        text: 'ออกจากระบบ',
+        style: 'destructive',
+        onPress: () => void signOut(),
+      },
+    ]);
+  };
+
   const fullName =
     `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() || 'ผู้ใช้งาน';
 
   return (
-    <Screen title="โปรไฟล์" subtitle="เซสชันมือถือ (OTP)">
+    <Screen title="โปรไฟล์" subtitle="บัญชีที่ใช้งานอยู่บนเครื่องนี้">
       <LinearGradient
         colors={['#1F6B4A', '#134734']}
         start={{ x: 0, y: 0 }}
@@ -30,7 +44,7 @@ export function ProfileScreen() {
         <Text style={styles.name}>{fullName}</Text>
         <View style={styles.rolePill}>
           <Ionicons name="shield-checkmark" size={14} color="#E8F8F0" />
-          <Text style={styles.roleText}>{user?.role ?? '-'}</Text>
+          <Text style={styles.roleText}>{roleLabel}</Text>
         </View>
       </LinearGradient>
 
@@ -43,11 +57,7 @@ export function ProfileScreen() {
         <View style={styles.divider} />
         <InfoRow icon="mail-outline" label="อีเมล" value={user?.email || '-'} />
         <View style={styles.divider} />
-        <InfoRow
-          icon="shield-outline"
-          label="บทบาท"
-          value={user?.role || '-'}
-        />
+        <InfoRow icon="shield-outline" label="บทบาท" value={roleLabel} />
       </View>
 
       <View style={styles.hintCard}>
@@ -57,15 +67,14 @@ export function ProfileScreen() {
           color={colors.primary}
         />
         <Text style={styles.hint}>
-          การเข้าสู่ระบบจะจำไว้บนเครื่องนี้จนกว่าจะกดออกจากระบบ หรือ refresh หมดอายุ
-          (ประมาณ 90 วัน)
+          เครื่องนี้จะจำการเข้าสู่ระบบไว้ประมาณ 90 วัน หรือจนกว่าจะกดออกจากระบบ
         </Text>
       </View>
 
       <SecondaryButton
         label="ออกจากระบบ"
         tone="danger"
-        onPress={() => signOut()}
+        onPress={confirmSignOut}
       />
     </Screen>
   );

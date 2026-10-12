@@ -228,6 +228,7 @@ const styles = StyleSheet.create({
   },
   contextChip: {
     alignSelf: 'flex-start',
+    maxWidth: '100%',
     marginBottom: 12,
     backgroundColor: colors.primaryMuted,
   },

@@ -229,7 +229,7 @@ export function LoginScreen() {
             </Surface>
 
             <Text variant="bodySmall" style={styles.footnote}>
-              บัญชีควรมีสิทธิ์ ADMIN สำหรับจดมิเตอร์และรับชำระ
+              ใช้ได้เฉพาะบัญชีเจ้าหน้าที่ที่ลงทะเบียนเบอร์โทรไว้
             </Text>
           </ScrollView>
         </KeyboardAvoidingView>
