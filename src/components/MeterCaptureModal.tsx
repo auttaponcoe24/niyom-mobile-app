@@ -35,6 +35,13 @@ export function MeterCaptureModal({ visible, onClose, onReading }: Props) {
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [busy, setBusy] = useState(false);
+  // Meter boxes are often dark; off again every time the camera closes.
+  const [torch, setTorch] = useState(false);
+
+  const close = () => {
+    setTorch(false);
+    onClose();
+  };
 
   const ensurePermission = async () => {
     if (permission?.granted) return true;
@@ -96,7 +103,7 @@ export function MeterCaptureModal({ visible, onClose, onReading }: Props) {
       }
 
       onReading(digits);
-      onClose();
+      close();
     } catch {
       Alert.alert('ผิดพลาด', 'ถ่ายหรืออ่านรูปไม่สำเร็จ ลองใหม่');
     } finally {
@@ -109,12 +116,12 @@ export function MeterCaptureModal({ visible, onClose, onReading }: Props) {
       visible={visible}
       animationType="slide"
       presentationStyle="fullScreen"
-      onRequestClose={onClose}
+      onRequestClose={close}
     >
       <View style={[styles.root, { paddingTop: insets.top }]}>
         <View style={styles.topBar}>
           <Pressable
-            onPress={onClose}
+            onPress={close}
             hitSlop={12}
             style={styles.closeBtn}
             accessibilityRole="button"
@@ -125,7 +132,20 @@ export function MeterCaptureModal({ visible, onClose, onReading }: Props) {
           <Text variant="titleMedium" style={styles.topTitle}>
             ถ่ายเลขมิเตอร์
           </Text>
-          <View style={styles.closeBtn} />
+          <Pressable
+            onPress={() => setTorch((on) => !on)}
+            hitSlop={12}
+            style={[styles.closeBtn, torch && styles.torchOn]}
+            accessibilityRole="button"
+            accessibilityLabel={torch ? 'ปิดไฟฉาย' : 'เปิดไฟฉาย'}
+            accessibilityState={{ selected: torch }}
+          >
+            <Ionicons
+              name={torch ? 'flashlight' : 'flashlight-outline'}
+              size={20}
+              color={torch ? '#134734' : '#FFF'}
+            />
+          </Pressable>
         </View>
 
         <View style={styles.cameraWrap}>
@@ -151,6 +171,7 @@ export function MeterCaptureModal({ visible, onClose, onReading }: Props) {
                 style={StyleSheet.absoluteFill}
                 facing="back"
                 mode="picture"
+                enableTorch={torch}
               />
               <View pointerEvents="none" style={styles.overlay}>
                 <View style={styles.maskTop} />
@@ -205,6 +226,9 @@ export function MeterCaptureModal({ visible, onClose, onReading }: Props) {
 const FRAME_H = 88;
 
 const styles = StyleSheet.create({
+  torchOn: {
+    backgroundColor: '#FFE08A',
+  },
   root: {
     flex: 1,
     backgroundColor: '#0A1510',

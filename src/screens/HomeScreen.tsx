@@ -8,6 +8,7 @@ import { SegmentedButtons, Text } from 'react-native-paper';
 
 import { ZoneRow } from '@/components/list-rows';
 import { Screen } from '@/components/Screen';
+import { SyncBanner } from '@/components/SyncBanner';
 import { EmptyState } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useWork } from '@/context/WorkContext';
@@ -81,6 +82,7 @@ export function HomeScreen() {
 
   const listHeader = (
     <View>
+      <SyncBanner />
       <LinearGradient
         colors={['#1F6B4A', '#134734']}
         start={{ x: 0, y: 0 }}

@@ -103,19 +103,25 @@ export function UnitDetailScreen({ route, navigation }: Props) {
   const [savedName, setSavedName] = useState<string | null>(null);
 
   const onSaved = useCallback(
-    (saved: UnitRow) => {
+    (saved: UnitRow, queued: boolean) => {
       const savedKey = unitKey(saved);
       const from = units.findIndex((row) => unitKey(row) === savedKey);
       const next = findNextPending(units, Math.max(from, 0), savedKey);
       if (next < 0) {
-        Alert.alert('จดครบแล้ว', 'จดเลขมิเตอร์ครบทุกรายการในโซนนี้แล้ว', [
-          { text: 'กลับรายการ', onPress: () => navigation.goBack() },
-        ]);
+        Alert.alert(
+          'จดครบแล้ว',
+          queued
+            ? 'จดครบทุกรายการแล้ว — รายการที่ยังไม่ได้ส่งจะส่งเองเมื่อมีสัญญาณ'
+            : 'จดเลขมิเตอร์ครบทุกรายการในโซนนี้แล้ว',
+          [{ text: 'กลับรายการ', onPress: () => navigation.goBack() }]
+        );
         return;
       }
-      setSavedName(
+      const name =
         `${saved.firstName ?? ''} ${saved.lastName ?? ''}`.trim() ||
-          `#${saved.no ?? '-'}`
+        `#${saved.no ?? '-'}`;
+      setSavedName(
+        queued ? `ไม่มีสัญญาณ เก็บไว้ในเครื่อง: ${name}` : `บันทึกแล้ว: ${name}`
       );
       setTarget(next);
       // A far jump would scroll past every house in between — go straight there.
@@ -162,10 +168,10 @@ export function UnitDetailScreen({ route, navigation }: Props) {
       <Snackbar
         visible={savedName !== null}
         onDismiss={() => setSavedName(null)}
-        duration={1800}
+        duration={2200}
         wrapperStyle={styles.snackbar}
       >
-        {`บันทึกแล้ว: ${savedName ?? ''}`}
+        {savedName ?? ''}
       </Snackbar>
     </Screen>
   );

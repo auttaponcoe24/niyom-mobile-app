@@ -126,9 +126,12 @@ export async function mobileSaveUnit(body: {
   isMeterReplaced?: boolean;
   isMeterRolledOver?: boolean;
 }) {
+  // Short timeout: with weak signal the reading goes to the outbox instead of
+  // leaving the worker waiting. Re-sending the same reading later is harmless.
   const { data } = await httpClient.post<ApiEnvelope<unknown>>(
     '/api/mobile/units',
-    body
+    body,
+    { timeout: 12000 }
   );
   return data;
 }

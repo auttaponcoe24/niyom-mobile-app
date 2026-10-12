@@ -6,6 +6,7 @@ import { Text } from 'react-native-paper';
 import { Screen } from '@/components/Screen';
 import { SecondaryButton } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
+import { getOutbox } from '@/lib/outbox';
 import { colors } from '@/theme/colors';
 
 export function ProfileScreen() {
@@ -17,7 +18,12 @@ export function ProfileScreen() {
     user?.role === 'ADMIN' ? 'เจ้าหน้าที่' : user?.role === 'USER' ? 'ผู้ใช้งาน' : '-';
 
   const confirmSignOut = () => {
-    Alert.alert('ออกจากระบบ?', 'ครั้งต่อไปต้องขอรหัส OTP ทางมือถือเพื่อเข้าสู่ระบบใหม่', [
+    const waiting = getOutbox().length;
+    const message =
+      waiting > 0
+        ? `มีเลขมิเตอร์ ${waiting} รายการที่ยังไม่ได้ส่ง — จะส่งเมื่อมีคนเข้าสู่ระบบบนเครื่องนี้อีกครั้ง ควรส่งให้เสร็จก่อนออก`
+        : 'ครั้งต่อไปต้องขอรหัส OTP ทางมือถือเพื่อเข้าสู่ระบบใหม่';
+    Alert.alert('ออกจากระบบ?', message, [
       { text: 'ยกเลิก', style: 'cancel' },
       {
         text: 'ออกจากระบบ',

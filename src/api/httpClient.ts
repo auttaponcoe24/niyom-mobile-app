@@ -39,6 +39,11 @@ export function isAuthRejection(error: unknown) {
   return status === 401 || status === 403;
 }
 
+/** True when the request never got an answer: no signal, timeout, server unreachable. */
+export function isNetworkError(error: unknown) {
+  return axios.isAxiosError(error) && !error.response;
+}
+
 async function refreshAccessToken(): Promise<RefreshResult> {
   const refreshToken = await getRefreshToken();
   if (!refreshToken) return 'expired';

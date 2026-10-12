@@ -10,13 +10,18 @@ import {
 } from 'react';
 import { Alert } from 'react-native';
 
-import { isAuthRejection, setSessionExpiredHandler } from '@/api/httpClient';
+import {
+  isAuthRejection,
+  isNetworkError,
+  setSessionExpiredHandler,
+} from '@/api/httpClient';
 import {
   mobileGetProfile,
   mobileLogout,
   mobileRefreshSession,
   mobileVerifyOtp,
 } from '@/api/mobile';
+import { readJson, writeJson } from '@/lib/json-store';
 import {
   clearTokens,
   getAccessToken,
@@ -40,15 +45,33 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const USER_STORE = 'last-user';
+
+/** Last signed-in profile, kept on the device so the app opens with no signal. */
+function rememberUser(user: User) {
+  writeJson(USER_STORE, user);
+  return user;
+}
+
+function recallUser() {
+  return readJson<User | null>(USER_STORE, null);
+}
+
+function forgetUser() {
+  writeJson(USER_STORE, null);
+}
+
 async function restoreSession(): Promise<User | null> {
   const accessToken = await getAccessToken();
   const refreshToken = await getRefreshToken();
 
   if (accessToken) {
     try {
-      return await mobileGetProfile();
-    } catch {
-      // Access may be expired — try opaque refresh before giving up.
+      return rememberUser(await mobileGetProfile());
+    } catch (error) {
+      // No signal: stay signed in as the last known user so offline work goes on.
+      if (isNetworkError(error) && refreshToken) return recallUser();
+      // Otherwise access may be expired — try opaque refresh before giving up.
     }
   }
 
@@ -62,11 +85,15 @@ async function restoreSession(): Promise<User | null> {
       refreshed.tokens.accessToken,
       refreshed.tokens.refreshToken
     );
-    return refreshed.user;
+    return rememberUser(refreshed.user);
   } catch (error) {
     // Opening the app with no signal must not throw the saved login away.
-    if (isAuthRejection(error)) await clearTokens();
-    return null;
+    if (isAuthRejection(error)) {
+      await clearTokens();
+      forgetUser();
+      return null;
+    }
+    return isNetworkError(error) ? recallUser() : null;
   }
 }
 
@@ -80,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // leaving every screen showing "unauthenticated".
   useEffect(() => {
     setSessionExpiredHandler(() => {
+      forgetUser();
       setUser(null);
       queryClient.clear();
       Alert.alert('เซสชันหมดอายุ', 'กรุณาเข้าสู่ระบบใหม่อีกครั้ง');
@@ -89,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshProfile = useCallback(async () => {
     const profile = await mobileGetProfile();
-    setUser(profile);
+    setUser(rememberUser(profile));
   }, []);
 
   useEffect(() => {
@@ -116,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (phoneNumber: string, code: string, deviceName?: string) => {
       const result = await mobileVerifyOtp(phoneNumber, code, deviceName);
       await setTokens(result.tokens.accessToken, result.tokens.refreshToken);
-      setUser(result.user);
+      setUser(rememberUser(result.user));
     },
     []
   );
@@ -128,6 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Ignore network errors on logout — clear local session anyway.
     } finally {
       await clearTokens();
+      forgetUser();
       setUser(null);
       queryClient.clear();
     }

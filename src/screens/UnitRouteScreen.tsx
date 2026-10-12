@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { ProgressBar, SegmentedButtons, Text } from 'react-native-paper';
 import { UnitListRow } from '@/components/list-rows';
 import { Screen } from '@/components/Screen';
+import { SyncBanner } from '@/components/SyncBanner';
 import { EmptyState, SearchField } from '@/components/ui';
 import { WorkContextBar } from '@/components/WorkContextBar';
 import { useWork } from '@/context/WorkContext';
@@ -95,8 +96,14 @@ export function UnitRouteScreen({ navigation }: Props) {
       const recorded = isRecorded(item);
       const name =
         `${item.prefix} ${item.firstName ?? ''} ${item.lastName ?? ''}`.trim();
+      // Sync state first: the line is cut off on narrow screens.
+      const syncNote = item.syncError
+        ? 'ส่งไม่ผ่าน · '
+        : item.pendingSync
+          ? 'รอส่ง · '
+          : '';
       const meta = recorded
-        ? `บ้านเลขที่ ${item.houseNumber || '-'} · เลขมิเตอร์ ${item.unitNumber}`
+        ? `${syncNote}เลขมิเตอร์ ${item.unitNumber} · บ้านเลขที่ ${item.houseNumber || '-'}`
         : `บ้านเลขที่ ${item.houseNumber || '-'}`;
 
       return (
@@ -127,6 +134,7 @@ export function UnitRouteScreen({ navigation }: Props) {
   return (
     <Screen title="จดมิเตอร์" subtitle="แตะรายการเพื่อจดเลขมิเตอร์" scroll={false}>
       <WorkContextBar />
+      <SyncBanner />
 
       <View style={styles.progressCard}>
         <View style={styles.progressHead}>

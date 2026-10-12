@@ -86,6 +86,10 @@ export type UnitRow = {
   houseNumber: string | null;
   /** Last round's reading and the units billed from it. */
   beforeData?: { unitNumber: number | null; unitUsed: number | null } | null;
+  /** Recorded on this device with no signal; not on the server yet. */
+  pendingSync?: boolean;
+  /** The server refused the waiting reading. */
+  syncError?: string;
 };
 
 export type Customer = {

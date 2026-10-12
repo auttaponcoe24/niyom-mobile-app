@@ -27,7 +27,7 @@ type Props = {
   pageLabel: string;
   /** This page is the one on screen (every page of the pager stays mounted). */
   active: boolean;
-  onSaved: (unit: UnitRow) => void;
+  onSaved: (unit: UnitRow, queued: boolean) => void;
 };
 
 function isRecorded(unit: UnitRow) {
@@ -106,19 +106,22 @@ export function UnitMeterForm({ unit, pageLabel, active, onSaved }: Props) {
   const save = async (parsed: number) => {
     if (!unit.zoneId) return;
     try {
-      await saveUnit.mutateAsync({
-        date: month,
-        type: unit.type,
-        unitNumber: parsed,
-        customerId: unit.customerId,
-        zoneId: unit.zoneId,
-        isMeterReplaced,
-        isMeterRolledOver,
-        previousMeterReading: isMeterReplaced
-          ? Number(previousMeterReading) || 0
-          : undefined,
+      const result = await saveUnit.mutateAsync({
+        label: customerName,
+        body: {
+          date: month,
+          type: unit.type,
+          unitNumber: parsed,
+          customerId: unit.customerId,
+          zoneId: unit.zoneId,
+          isMeterReplaced,
+          isMeterRolledOver,
+          previousMeterReading: isMeterReplaced
+            ? Number(previousMeterReading) || 0
+            : undefined,
+        },
       });
-      onSaved(unit);
+      onSaved(unit, result.queued);
     } catch (error) {
       const message =
         (error as { response?: { data?: { message?: string } } })?.response

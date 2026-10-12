@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { Text, TextInput } from 'react-native-paper';
+import { isNetworkError } from '@/api/httpClient';
 import { formatMoney } from '@/components/list-rows';
 import { ReceiptCard } from '@/components/ReceiptCard';
 import { Screen } from '@/components/Screen';
@@ -93,6 +94,14 @@ export function PayDetailScreen({ route, navigation }: Props) {
       Keyboard.dismiss();
       setPaidNow(true);
     } catch (error) {
+      if (isNetworkError(error)) {
+        // Payments are never queued offline: a receipt is issued on the spot.
+        Alert.alert(
+          'ไม่มีสัญญาณ',
+          'ยังไม่ได้บันทึกการรับชำระ — ต้องมีสัญญาณอินเทอร์เน็ตเพื่อรับชำระและออกใบเสร็จ ลองใหม่เมื่อมีสัญญาณ'
+        );
+        return;
+      }
       const message =
         (error as { response?: { data?: { message?: string } } })?.response
           ?.data?.message ?? 'รับชำระไม่สำเร็จ';
