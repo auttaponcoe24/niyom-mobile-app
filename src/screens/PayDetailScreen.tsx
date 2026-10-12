@@ -6,7 +6,6 @@ import {
   Alert,
   Keyboard,
   KeyboardAvoidingView,
-  Platform,
   ScrollView,
   StyleSheet,
   View,
@@ -118,7 +117,7 @@ export function PayDetailScreen({ route, navigation }: Props) {
       <View ref={keyboard.ref} onLayout={keyboard.onLayout} style={styles.flex}>
         <KeyboardAvoidingView
           style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior="padding"
           keyboardVerticalOffset={keyboard.offset}
         >
           <ScrollView

@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import type { View } from 'react-native';
+import { Platform, StatusBar, type View } from 'react-native';
 
 /**
  * Distance from the top of the window to a KeyboardAvoidingView, which it needs
@@ -12,7 +12,12 @@ export function useKeyboardOffset() {
 
   const onLayout = useCallback(() => {
     ref.current?.measureInWindow((_x, y) => {
-      if (Number.isFinite(y)) setOffset(y);
+      if (!Number.isFinite(y)) return;
+      // Android measures below the status bar, but keyboard positions are
+      // from the top of the screen.
+      const statusBar =
+        Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
+      setOffset(y + statusBar);
     });
   }, []);
 
