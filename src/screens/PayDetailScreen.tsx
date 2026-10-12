@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLayoutEffect, useState } from 'react';
 import {
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -12,6 +13,7 @@ import {
 } from 'react-native';
 import { Text, TextInput } from 'react-native-paper';
 import { formatMoney } from '@/components/list-rows';
+import { ReceiptCard } from '@/components/ReceiptCard';
 import { Screen } from '@/components/Screen';
 import { PrimaryButton } from '@/components/ui';
 import { usePayTransaction } from '@/hooks';
@@ -31,7 +33,9 @@ export function PayDetailScreen({ route, navigation }: Props) {
       : (transaction.total ?? 0);
 
   const [pay, setPay] = useState(String(defaultPay ?? 0));
-  const paid = transaction.status === 'PAY';
+  // Set after a successful payment: the route param still says WAITING.
+  const [paidNow, setPaidNow] = useState(false);
+  const paid = transaction.status === 'PAY' || paidNow;
   const customerName =
     `${transaction.prefix ?? ''} ${transaction.firstName ?? ''} ${transaction.lastName ?? ''}`.trim();
 
@@ -85,9 +89,9 @@ export function PayDetailScreen({ route, navigation }: Props) {
         transactionId: transaction.id,
         pay: amount,
       });
-      Alert.alert('รับชำระแล้ว', 'บันทึกการชำระสำเร็จ', [
-        { text: 'กลับรายการ', onPress: () => navigation.goBack() },
-      ]);
+      // Stay here: the receipt card appears so it can be shown or sent right away.
+      Keyboard.dismiss();
+      setPaidNow(true);
     } catch (error) {
       const message =
         (error as { response?: { data?: { message?: string } } })?.response
@@ -150,6 +154,10 @@ export function PayDetailScreen({ route, navigation }: Props) {
               </Text>
             </LinearGradient>
 
+            {paid && transaction.id > 0 ? (
+              <ReceiptCard transactionId={transaction.id} />
+            ) : null}
+
             <View style={styles.summaryCard}>
               <MetaRow
                 icon="receipt-outline"
@@ -206,13 +214,13 @@ export function PayDetailScreen({ route, navigation }: Props) {
             <PrimaryButton
               label={
                 paid
-                  ? 'ชำระแล้ว'
+                  ? 'กลับรายการ'
                   : payMutation.isPending
                     ? 'กำลังบันทึก...'
                     : 'ยืนยันรับชำระ'
               }
-              onPress={onPay}
-              disabled={payMutation.isPending || paid}
+              onPress={paid ? () => navigation.goBack() : onPay}
+              disabled={payMutation.isPending}
             />
           </View>
         </KeyboardAvoidingView>

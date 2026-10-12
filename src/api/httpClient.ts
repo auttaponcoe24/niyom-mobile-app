@@ -13,6 +13,8 @@ const baseURL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000';
 export const httpClient = axios.create({
   baseURL,
   timeout: 30000,
+  // Arrays as repeated keys (type=W&type=E): the API rejects `type[]=`.
+  paramsSerializer: { indexes: null },
   headers: {
     'Content-Type': 'application/json',
   },

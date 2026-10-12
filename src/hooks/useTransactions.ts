@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { mobileGetTransactions, mobilePayTransaction } from '@/api/mobile';
+import {
+  mobileGetReceipt,
+  mobileGetTransactions,
+  mobilePayTransaction,
+} from '@/api/mobile';
 import { fetchAllPages } from '@/api/pagination';
 import {
   type TransactionListParams,
@@ -40,5 +44,13 @@ export function usePayTransaction() {
         queryKey: transactionKeys.all(),
       });
     },
+  });
+}
+
+export function useGetReceipt(transactionId: number) {
+  return useQuery({
+    queryKey: transactionKeys.receipt(transactionId),
+    queryFn: () => mobileGetReceipt(transactionId),
+    enabled: transactionId > 0,
   });
 }

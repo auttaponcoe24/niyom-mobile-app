@@ -90,7 +90,7 @@ function CustomersNavigator() {
       <CustomersStack.Screen
         name="CustomerDetail"
         component={CustomerDetailScreen}
-        options={{ title: 'ลูกค้า' }}
+        options={{ title: 'ลูกค้า', headerBackTitle: 'รายชื่อ' }}
       />
     </CustomersStack.Navigator>
   );

@@ -28,7 +28,8 @@
             "deploymentTarget": "16.0"
           }
         }
-      ]
+      ],
+      "expo-sharing"
     ],
     "ios": {
       "supportsTablet": true,

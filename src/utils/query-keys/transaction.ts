@@ -11,11 +11,16 @@ export type TransactionListParams = {
   date: string;
   zoneId: number;
   type: UnitType | UnitType[];
+  customerId?: string;
 };
 
 export const transactionKeys = QueryKeyManager.create('transaction', {
   all: defineKey(() => ['transactions'] as const),
   list: defineKey(
     (params: TransactionListParams) => ['transactions', params] as const
+  ),
+  receipt: defineKey(
+    (transactionId: number) =>
+      ['transactions', 'receipt', transactionId] as const
   ),
 });

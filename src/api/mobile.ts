@@ -6,6 +6,7 @@ import type {
   Customer,
   MobileAuthData,
   MobileOtpRequestData,
+  ReceiptRef,
   TransactionRow,
   UnitRow,
   UnitType,
@@ -139,6 +140,7 @@ export async function mobileGetTransactions(params: {
   date: string;
   zoneId: number;
   type: UnitType | UnitType[];
+  customerId?: string;
 }) {
   const { data } = await httpClient.get<ApiPaginated<TransactionRow>>(
     '/api/mobile/transactions',
@@ -154,6 +156,13 @@ export async function mobilePayTransaction(
   const { data } = await httpClient.post<ApiEnvelope<TransactionRow>>(
     `/api/mobile/transactions/${transactionId}/pay`,
     { pay }
+  );
+  return data.data;
+}
+
+export async function mobileGetReceipt(transactionId: number) {
+  const { data } = await httpClient.get<ApiEnvelope<ReceiptRef | null>>(
+    `/api/mobile/transactions/${transactionId}/receipt`
   );
   return data.data;
 }

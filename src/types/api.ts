@@ -105,6 +105,12 @@ export type Customer = {
   zone?: { id: number; zoneName: string } | null;
 };
 
+/** A paid bill's receipt; the PDF is at /api/receipts/:id/pdf. */
+export type ReceiptRef = {
+  id: string;
+  receiptNo: string;
+};
+
 export type TransactionRow = {
   id: number;
   date: string;
