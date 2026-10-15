@@ -199,6 +199,12 @@ export function LoginScreen() {
                     </Surface>
                   ) : null}
 
+                  {/* The API answers the same for unregistered numbers (no account
+                      enumeration), so say why a code might never arrive. */}
+                  <Text variant="bodySmall" style={styles.otpHint}>
+                    ถ้าไม่ได้รับ SMS ภายใน 1–2 นาที ตรวจว่าเบอร์นี้ลงทะเบียนกับเจ้าหน้าที่แล้ว
+                  </Text>
+
                   <Text variant="labelLarge" style={styles.otpLabel}>
                     รหัส OTP 6 หลัก
                   </Text>
@@ -239,6 +245,11 @@ export function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
+  otpHint: {
+    marginTop: 8,
+    color: colors.textMuted,
+    lineHeight: 18,
+  },
   root: {
     flex: 1,
     backgroundColor: colors.background,
