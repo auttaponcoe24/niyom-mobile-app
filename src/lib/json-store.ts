@@ -27,3 +27,12 @@ export function writeJson(name: string, value: unknown) {
     // Storage is a convenience layer — never break the screen over it.
   }
 }
+
+export function removeJson(name: string) {
+  try {
+    const file = fileFor(name);
+    if (file.exists) file.delete();
+  } catch {
+    // Nothing to remove.
+  }
+}

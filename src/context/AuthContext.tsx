@@ -1,4 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
+import * as SecureStore from 'expo-secure-store';
 import {
   createContext,
   type ReactNode,
@@ -9,7 +10,6 @@ import {
   useState,
 } from 'react';
 import { Alert } from 'react-native';
-
 import {
   isAuthRejection,
   isNetworkError,
@@ -21,7 +21,8 @@ import {
   mobileRefreshSession,
   mobileVerifyOtp,
 } from '@/api/mobile';
-import { readJson, writeJson } from '@/lib/json-store';
+
+import { removeJson } from '@/lib/json-store';
 import {
   clearTokens,
   getAccessToken,
@@ -45,23 +46,62 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const USER_STORE = 'last-user';
+const USER_STORE = 'niyom.lastUser';
 
-/** Last signed-in profile, kept on the device so the app opens with no signal. */
+/**
+ * Last signed-in profile, kept on the device so the app opens with no signal.
+ * Only what the screens show — never the national ID or address, because this
+ * file is not encrypted. Kept in SecureStore all the same.
+ */
+type OfflineUser = Pick<
+  User,
+  'id' | 'firstName' | 'lastName' | 'email' | 'phoneNumber' | 'role'
+>;
+
 function rememberUser(user: User) {
-  writeJson(USER_STORE, user);
+  const offline: OfflineUser = {
+    id: user.id,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: user.email,
+    phoneNumber: user.phoneNumber ?? null,
+    role: user.role,
+  };
+  void SecureStore.setItemAsync(USER_STORE, JSON.stringify(offline)).catch(
+    () => undefined
+  );
   return user;
 }
 
-function recallUser() {
-  return readJson<User | null>(USER_STORE, null);
+async function recallUser(): Promise<User | null> {
+  try {
+    const raw = await SecureStore.getItemAsync(USER_STORE);
+    if (!raw) return null;
+    const offline = JSON.parse(raw) as OfflineUser;
+    // Fields not kept offline stay empty until the server answers again.
+    return {
+      ...offline,
+      cardId: null,
+      customerId: null,
+      provinceId: null,
+      districtId: null,
+      subDistrictId: null,
+      createdAt: '',
+      updatedAt: null,
+    };
+  } catch {
+    return null;
+  }
 }
 
 function forgetUser() {
-  writeJson(USER_STORE, null);
+  void SecureStore.deleteItemAsync(USER_STORE).catch(() => undefined);
 }
 
 async function restoreSession(): Promise<User | null> {
+  // Builds before this one kept the full profile (with the national ID) in a
+  // plain file — delete it.
+  removeJson('last-user');
   const accessToken = await getAccessToken();
   const refreshToken = await getRefreshToken();
 
