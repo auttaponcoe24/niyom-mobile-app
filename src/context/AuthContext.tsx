@@ -23,6 +23,7 @@ import {
 } from '@/api/mobile';
 
 import { removeJson } from '@/lib/json-store';
+import { removeOldReceipts } from '@/lib/receipt-pdf';
 import {
   clearTokens,
   getAccessToken,
@@ -96,6 +97,8 @@ async function recallUser(): Promise<User | null> {
 
 function forgetUser() {
   void SecureStore.deleteItemAsync(USER_STORE).catch(() => undefined);
+  // The next person on this phone must not find the last one's receipts.
+  removeOldReceipts();
 }
 
 async function restoreSession(): Promise<User | null> {

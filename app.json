@@ -37,7 +37,6 @@
     },
     "android": {
       "package": "info.niyom.mobile",
-      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#E4F2EB",
         "foregroundImage": "./assets/android-icon-foreground.png",
