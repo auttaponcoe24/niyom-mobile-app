@@ -52,5 +52,11 @@
     "pre-push": "sh .husky/pre-push",
     "prepare": "husky"
   },
-  "private": true
+  "private": true,
+  "pnpm": {
+    "overrides": {
+      "follow-redirects": "^1.16.2",
+      "shell-quote": "^1.11.0"
+    }
+  }
 }
